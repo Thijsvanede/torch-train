@@ -43,7 +43,7 @@ if __name__ == "__main__":
         epochs        = 10,
         batch_size    = 32,
         learning_rate = 0.01,
-        criterion     = nn.NLLLoss,
+        criterion     = nn.NLLLoss(),
         optimizer     = optim.SGD,
         variable      = False,
         verbose       = True

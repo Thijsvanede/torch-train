@@ -30,7 +30,7 @@ class Module(nn.Module):
             epochs        = 10,
             batch_size    = 32,
             learning_rate = 0.01,
-            criterion     = nn.NLLLoss,
+            criterion     = nn.NLLLoss(),
             optimizer     = optim.SGD,
             variable      = False,
             verbose       = True,
@@ -54,7 +54,7 @@ class Module(nn.Module):
             learning_rate : float, default=0.01
                 Learning rate to use for optimizer
 
-            criterion : nn.Loss, default=nn.NLLLoss
+            criterion : nn.Loss, default=nn.NLLLoss()
                 Loss function to use
 
             optimizer : optim.Optimizer, default=optim.SGD
@@ -79,8 +79,6 @@ class Module(nn.Module):
             params = self.parameters(),
             lr     = learning_rate
         )
-        # Set criterion
-        criterion = criterion()
         # Initialise progress
         if verbose: self.progress.reset(len(X), epochs)
 

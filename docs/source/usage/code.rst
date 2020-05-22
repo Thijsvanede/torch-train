@@ -81,7 +81,7 @@ Finally, we create the network and invoke its :py:meth:`fit` and :py:meth:`predi
       epochs        = 10,
       batch_size    = 32,
       learning_rate = 0.01,
-      criterion     = nn.NLLLoss,
+      criterion     = nn.NLLLoss(),
       optimizer     = optim.SGD,
       variable      = False,
       verbose       = True
