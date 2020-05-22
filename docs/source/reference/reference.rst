@@ -9,4 +9,5 @@ This is the reference documentation for the classes and methods objects provided
    :maxdepth: 2
 
    module
+   progress
    variable_data_loader
