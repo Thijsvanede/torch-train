@@ -37,6 +37,7 @@ if __name__ == "__main__":
 
     # Create network
     net = MyNetwork(10, 128, 10)
+
     # Fit network
     net.fit(X_train, y_train,
         epochs        = 10,
