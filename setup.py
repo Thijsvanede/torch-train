@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="torch-train",
-    version="0.0.1",
+    version="0.0.2",
     author="Thijs van Ede",
     author_email="t.s.vanede@utwente.nl",
     description="Training wrapper around torch.nn.Module, provides scikit-learn like fit and predict interfaces.",
