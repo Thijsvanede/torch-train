@@ -3,6 +3,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import tqdm
 from torch.utils.data import DataLoader, TensorDataset
 try:
     from torchtrain.variable_data_loader import VariableDataLoader
@@ -23,8 +24,6 @@ class Module(nn.Module):
         """Only calls super method nn.Module with given arguments."""
         # Initialise super
         super().__init__(*args, **kwargs)
-        # Keep progress
-        self.progress = Progress()
 
     def fit(self, X, y,
             epochs        = 10,
@@ -79,8 +78,6 @@ class Module(nn.Module):
             params = self.parameters(),
             lr     = learning_rate
         )
-        # Initialise progress
-        if verbose: self.progress.reset(len(X), epochs)
 
         ################################################################
         #                         Prepare data                         #
@@ -112,7 +109,10 @@ class Module(nn.Module):
         for epoch in range(1, epochs+1):
             try:
                 # Loop over entire dataset
-                for X_, y_ in data:
+                for X_, y_ in tqdm.tqdm(data,
+                    desc="[Epoch {:{width}}/{:{width}}]".format(
+                        epoch, epochs, width=len(str(epochs)))):
+
                     # Clear optimizer
                     optimizer.zero_grad()
 
@@ -130,13 +130,9 @@ class Module(nn.Module):
                     # Perform optimizer step
                     optimizer.step()
 
-                    # Update progress
-                    if verbose: self.progress.update(loss, X_.shape[0])
             except KeyboardInterrupt:
                 print("\nTraining interrupted, performing clean stop")
                 break
-            # New line for each epoch
-            if verbose: self.progress.update_epoch()
 
         ################################################################
         #                         Returns self                         #
@@ -176,8 +172,6 @@ class Module(nn.Module):
             # Initialise result
             result = list()
             indices = torch.arange(len(X))
-            # Initialise progress
-            if verbose: self.progress.reset(len(X), 1)
 
             # If we expect variable input
             if variable:
@@ -192,13 +186,11 @@ class Module(nn.Module):
                 )
 
                 # Loop over data
-                for X_, y_, i in data:
+                for X_, y_, i in tqdm.tqdm(data, desc="Predicting"):
                     # Perform prediction and append
                     result .append(self(X_))
                     # Store index
                     indices.append(i)
-                    # Update progress
-                    if verbose: self.progress.update(0, X_.shape[0])
 
                 # Concatenate inputs
                 indices = torch.cat(indices)
@@ -206,16 +198,14 @@ class Module(nn.Module):
             # If input is not variable
             else:
                 # Predict each batch
-                for batch in range(0, X.shape[0], batch_size):
+                for batch in tqdm.tqdm(range(0, X.shape[0], batch_size),
+                    desc="Predicting"):
+                    
                     # Extract data to predict
                     X_ = X[batch:batch+batch_size]
                     # Add prediction
                     result.append(self(X_))
-                    # Update progress
-                    if verbose: self.progress.update(0, X_.shape[0])
 
-            # Print finished prediction
-            if verbose: self.progress.update_epoch()
             # Concatenate result and return
             return torch.cat(result)[indices]
 
@@ -275,134 +265,3 @@ class Module(nn.Module):
                         verbose,
                         **kwargs
             ).predict(X, batch_size, variable, verbose, **kwargs)
-
-
-
-################################################################################
-#                            Keep track of progress                            #
-################################################################################
-
-class Progress(object):
-
-    def __init__(self, size=-1, epochs=-1):
-        """Track progress of NN training"""
-        # Reset progress
-        self.reset(size, epochs)
-
-    def reset(self, size, epochs):
-        """Reset progress for a given training size and epochs
-
-            Parameters
-            ----------
-            size : int
-                Number of items in training data
-
-            epochs : int
-                Number of epochs to train with
-            """
-        # Set variables
-        self.size     = size
-        self.epochs   = epochs
-
-        # Set progress
-        self.epoch = 0
-        self.start = time.time()
-        self.last  = time.time()
-
-        # Track loss values
-        self.val   = 0
-        self.avg   = 0
-        self.sum   = 0
-        self.count = 0
-
-        # Return self
-        return self
-
-    def update(self, val, n=1):
-        """Update self and print progress
-
-            Parameters
-            ----------
-            val : float
-                Loss value to update with
-
-            n : int
-                Number of items to update with
-
-            epoch : boolean, default=False
-                Whether to update to a new epoch
-            """
-        # Perform check on initialisation
-        if self.size < 0 or self.epochs < 0:
-            raise ValueError("Progress has not yet been initialised, call "
-                             "reset() first.")
-
-        # Update loss
-        self.val    = val
-        self.sum   += val * n
-        self.count += n
-        self.avg    = self.sum / self.count
-
-        if (time.time() - self.last) >= 0.05:
-            self.last = time.time()
-            print(self, end='\r')
-
-        # Return self
-        return self
-
-    def update_epoch(self):
-        """Update to new epoch"""
-        # Extract current epoch and sizes
-        epoch  = self.epoch
-
-        # Print newline
-        print(self)
-
-        # Reset self
-        self.reset(self.size, self.epochs)
-        # Update epochs
-        self.epoch  = epoch+1
-
-        # Return self
-        return self
-
-    def time_since(self, now=None):
-        """Get time since start
-
-            Parameters
-            ----------
-            now : datetime, default=None
-                If given, compute difference between start and given time
-
-            Returns
-            -------
-            time : timedelta
-                Difference in time between start and now
-            """
-        # Get time difference
-        return datetime.timedelta(seconds=(now or time.time()) - self.start)
-
-
-    def __str__(self):
-        """Get string representation of progress"""
-        # Compute timedelta
-        time_diff = self.time_since().total_seconds()
-        hours     = int(time_diff // 3600)
-        time_diff = time_diff - (hours*3600)
-        minutes   = int(time_diff // 60)
-        time_diff = time_diff - (minutes*60)
-        seconds   = int(time_diff)
-        millis    = int(10*(time_diff - seconds))
-        time_diff = "{}:{:02}:{:02}.{}".format(hours, minutes, seconds, millis)
-
-        return "[Epoch {:{width}}/{:{width}}] average loss = {:.4f} "\
-               "{}{} ({:6.2f}%) runtime {}".format(
-               # Epoch and loss information
-               self.epoch+1, self.epochs, self.avg,
-               # Progress in percentage
-               "#" * round(40*    (min(self.size, self.count))/self.size  ),
-               "." * round(40* (1-(min(self.size, self.count))/self.size) ),
-               100*(min(self.size, self.count))/self.size,
-               # Progress in time
-               time_diff,
-               width=len(str(self.epochs)))
